@@ -298,9 +298,15 @@ public abstract class XposedModule {
                 "com.google.firebase.INSTANCE_ID_EVENT".equals(action));
     }
 
+    protected boolean isUnifiedAction(String action) {
+        return action != null && ("org.unifiedpush.android.connector.MESSAGE".equals(action) ||
+                "org.unifiedpush.android.connector.NEW_ENDPOINT".equals(action) ||
+                "org.unifiedpush.android.distributor.MESSAGE_ACK".equals(action));
+    }
+
     protected boolean isFCMIntent(Intent intent) {
         String action = intent.getAction();
-        return isFCMAction(action);
+        return isFCMAction(action) || isUnifiedAction(action);
     }
 
     protected static String getSelfPackageName() {
