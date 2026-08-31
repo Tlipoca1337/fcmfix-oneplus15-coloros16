@@ -1,8 +1,11 @@
 package com.kooritea.fcmfix.xposed;
 
 import android.content.Intent;
-import android.content.pm.ApplicationInfo;
+import android.app.job.JobInfo;
+import android.content.ComponentName;
 import android.content.pm.PackageManager;
+import android.content.pm.ApplicationInfo;
+import android.os.PersistableBundle;
 import android.os.SystemClock;
 import android.os.WorkSource;
 import android.util.Pair;
@@ -69,6 +72,7 @@ public class OplusProxyFix extends XposedModule {
         runHook("registerGmsRestrictObserver", this::startHookRegisterGmsRestrictObserver);
         runHook("updateGmsRestrict", this::startHookUpdateGmsRestrict);
         runHook("isGoogleRestricInfoOn", this::startHookIsGoogleRestricInfoOn);
+        runHook("checkJobIfRestricted", this::startHookCheckJobIfRestricted);
         runHook("isAppClassifyRestricted", this::startHookAppClassifyRestricted);
         runHook("isAllowStartFromBindService", this::startHookGcmBindService);
         runHook("isAllowStartFromStartService", this::startHookFcmStartService);
@@ -451,6 +455,48 @@ public class OplusProxyFix extends XposedModule {
         int hooks = hookAllMethods(OPLUS_STARTUP_STRATEGY,
                 "isGoogleRestricInfoOn", Boolean.FALSE);
         if (hooks == 0) throw new NoSuchMethodError("isGoogleRestricInfoOn");
+    }
+
+    private void startHookCheckJobIfRestricted() {
+        Class<?> clazz = XposedHelpers.findClassIfExists("com.android.server.am.OplusSceneManager", classLoader);
+        if (clazz == null) throw new NoClassDefFoundError("com.android.server.am.OplusSceneManager");
+        int hooks = 0;
+        for (Method method : clazz.getDeclaredMethods()) {
+            if (!"checkJobIfRestricted".equals(method.getName())
+                    || !isBooleanType(method.getReturnType())) {
+                continue;
+            }
+            XposedBridge.hookMethod(method, new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    if (!(param.args[1] instanceof String) || !(param.args[2] instanceof JobInfo))
+                        return;
+
+                    String sourcePackage = (String) param.args[1];
+                    JobInfo jobInfo = (JobInfo) param.args[2];
+                    if (!"com.google.android.gm".equals(sourcePackage))
+                        return;
+
+                    ComponentName service = jobInfo.getService();
+                    if (service == null
+                            || !"android".equals(service.getPackageName())
+                            || !"com.android.server.content.SyncJobService".equals(service.getClassName()))
+                        return;
+
+                    PersistableBundle extras = jobInfo.getExtras();
+                    if (extras == null
+                            || !"gmail-ls".equals(extras.getString("provider"))
+                            || !"com.google.android.gm".equals(extras.getString("owningPackage")))
+                        return;
+
+                    printLog("Hans job bypass: pkg=" + sourcePackage + ", provider=gmail-ls");
+                    // false means the job is not restricted and JobScheduler may execute it.
+                    param.setResult(false);
+                }
+            });
+            hooks++;
+            printLog("Oplus scene hook active: " + describeMethod(method));
+        }
     }
 
     /**
