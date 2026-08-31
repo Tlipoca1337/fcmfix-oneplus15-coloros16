@@ -113,6 +113,11 @@ public final class XposedBridge {
         throw new IllegalArgumentException("Unsupported member type: " + method);
     }
 
+    public static boolean deoptimize(Member member) {
+        ensureInit();
+        return xposedInterface.deoptimize((java.lang.reflect.Executable) member);
+    }
+
     static final class HookHandleWrapper {
         private final Member member;
         private final XC_MethodHook callback;
