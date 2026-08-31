@@ -39,35 +39,8 @@ jobs:
         echo "BUILD_TOOL_VERSION=$BUILD_TOOL_VERSION" >> $GITHUB_ENV
         echo Last build tool version is: $BUILD_TOOL_VERSION
 
-    - name: Sign APK
-      uses: r0adkll/sign-android-release@v1
-      with:
-        releaseDirectory: ${{ github.workspace }}/app/build/outputs/apk/release
-        signingKeyBase64: ${{ secrets.SIGNINGKEYBASE64 }}
-        alias: ${{ secrets.ALIAS }}
-        keyStorePassword: ${{ secrets.KEYSTOREPASSWORD }}
-        keyPassword: ${{ secrets.KEYPASSWORD }}
-      env:
-        BUILD_TOOLS_VERSION: ${{ env.BUILD_TOOL_VERSION }}
-
-    - name: Rename APK
-      run: mv ${{ github.workspace }}/app/build/outputs/apk/release/app-release-unsigned-signed.apk ${{ github.workspace }}/app/build/outputs/apk/release/fcmfix-oneplus15-coloros16-${{ env.VERSION_NAME }}.apk
-    
     - name: Upload built apk
       uses: actions/upload-artifact@v4
       with:
         name: release
-        path: ${{ github.workspace }}/app/build/outputs/apk/release/fcmfix-oneplus15-coloros16-${{ env.VERSION_NAME }}.apk
-
-    - name: Release
-      uses: softprops/action-gh-release@v2
-      with:
-        name: "FCMFix OnePlus 15 ColorOS 16 (${{ env.VERSION_NAME }})"
-        tag_name: ${{ env.VERSION_NAME }}
-        token: "${{ github.token }}"
-        body: |
-          本版本由仓库 CI 使用专用发布证书构建并签名。
-
-          详细变更、适用范围和安装方法见 README；首次从旧调试签名版本迁移时需要卸载旧版。
-        files: |
-          ${{ github.workspace }}/app/build/outputs/apk/release/fcmfix-oneplus15-coloros16-${{ env.VERSION_NAME }}.apk
+        path: ${{ github.workspace }}/app/build/outputs/apk/release/app-release-unsigned.apk
